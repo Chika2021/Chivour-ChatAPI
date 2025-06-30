@@ -13,6 +13,7 @@ export class MessagesService {
     }
 
     async findMessages(senderId:string, receiverId:string): Promise<Message[]> {
+    
         const messages = await this.messageRepository.find(
             {
                 $or: [
@@ -20,7 +21,10 @@ export class MessagesService {
                     {senderId: receiverId, receiverId: senderId}
                 ]
             }
-        ).sort({ timestamp: 1 });
+        ).sort({ createdAt: 1 })
+          .populate('senderId', 'user _id')     // 👈 Populates sender info
+          .populate('receiverId', 'user _id')   // 👈 Populates receiver info
+          .exec();
         return messages;
     }
 }

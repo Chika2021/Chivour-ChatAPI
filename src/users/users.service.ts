@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { User } from './model/users.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -8,6 +8,8 @@ import  * as bcrypt from 'bcrypt'
 @Injectable()
 export class UsersService {
     constructor(@InjectModel(User.name) private userRepository:Model<User>, private jwtService:JwtService ) {}
+
+    
 
     async register(userDto: User): Promise<{token: string}> {
 
@@ -42,4 +44,25 @@ export class UsersService {
         const token = this.jwtService.sign({id:user._id})
         return {token}
     }
+
+    async findById(id: string): Promise<User | null> {
+        return this.userRepository.findById(id);
+    }
+
+
+
+    async validateUser(id:string, password:string): Promise<any> {
+        const user = await this.userRepository.findById(id);
+        if(!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password)
+        if(!isPasswordValid) {
+            throw new UnauthorizedException('Invalid password');
+        }
+        return {id: user._id , email: user.email};
+
+    }
 }
+
