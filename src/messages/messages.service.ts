@@ -2,15 +2,31 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Message } from './model/message.schema';
 import { Model } from 'mongoose';
+import { User } from 'src/users/model/users.schema';
 
 @Injectable()
 export class MessagesService {
-    constructor(@InjectModel(Message.name) private messageRepository:Model<Message>) {}
+    constructor(@InjectModel(Message.name) private messageRepository: Model<Message>,
+                @InjectModel(User.name) private userRepository: Model<User>) {}
 
-    async createMessage(messageDto: Message): Promise<Message> {
+    async createMessage(messageDto: Message, user: User): Promise<any> {
         const message = await this.messageRepository.create(messageDto);
-        return message;
+        const sender = await this.userRepository.findById(user._id);
+        const receiver = await this.userRepository.findById(message.receiverId);
+        if (!sender || !receiver) {
+            throw new Error('Sender or receiver not found');
+        }
+
+        return  {
+            _id: message._id,
+            content: message.content,
+            sender: user._id,
+            receiver: message.receiverId,
+        }
     }
+
+
+   
 
     async findMessages(senderId:string, receiverId:string): Promise<Message[]> {
     
@@ -22,9 +38,10 @@ export class MessagesService {
                 ]
             }
         ).sort({ createdAt: 1 })
-          .populate('senderId', 'user _id')     // 👈 Populates sender info
-          .populate('receiverId', 'user _id')   // 👈 Populates receiver info
+          .populate('senderId', 'user.email')     //  Populates sender info
+          .populate('receiverId', 'user.email')   //  Populates receiver info
           .exec();
+          console.log(receiverId, senderId, messages);
         return messages;
     }
 }
